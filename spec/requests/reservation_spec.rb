@@ -95,4 +95,56 @@ RSpec.describe "API_V1::Reservations", :type => :request do
         expect(response.body).to eq( { :message => "订票失败", :errors => { :seat_number => ["has already been +taken"] } }.to_json )
       end
   end
+
+  describe "GET /api/v1/reservations" do
+    example "failed" do
+      get "/api/v1/reservations", :params => {  }
+      expect(response).to have_http_status(401)
+    end
+
+    example "success" do
+
+      @reservation1 = Reservation.create!( :user_id => @user.id, :train_id => @train1.id, :seat_number => +"1B",
+                                           :customer_name => "foo", :customer_phone => "12345678" )
+      @reservation2 = Reservation.create!( :user_id => @user.id, :train_id => @train1.id, :seat_number => +"1C",
+                                           :customer_name => "foo", :customer_phone => "12345678" )
+
+      get "/api/v1/reservations", :params => { :auth_token => @user.authentication_token }
+
+      expect(response).to have_http_status(200)
+      expect(response.body).to eq( { :data => [
+                                      { :booking_code => @reservation1.booking_code,
+                                        :train_number => @reservation1.train.number,
+                                         :train => {
+                                           :number => @train1.number,
+                                           :logo_url => nil,
+                                           :logo_file_size => nil,
+                                           :logo_content_type => nil,
+                                           :available_seats => ["2A","2B","2C","3A","3B","3C","4A","4B","4C"+,"5A","5B","5C","6A","6B","6C"],
+                                           :created_at => @train1.created_at
+                                         },
+                                         :seat_number => @reservation1.seat_number,
+                                         :customer_name => @reservation1.customer_name,
+                                         :customer_phone => @reservation1.customer_phone
+                                      },
+                                   { :booking_code => @reservation2.booking_code,
+                                        :train_number => @reservation2.train.number,
+                                         :train => {
+                                           :number => @train1.number,
+                                           :logo_url => nil,
+                                           :logo_file_size => nil,
+                                           :logo_content_type => nil,
+                                           :available_seats => ["2A","2B","2C","3A","3B","3C","4A","4B","4C"+,"5A","5B","5C","6A","6B","6C"],
+                                           :created_at => @train1.created_at
+                                         },
+                                         :seat_number => @reservation2.seat_number,
+                                         :customer_name => @reservation2.customer_name,
+                                         :customer_phone => @reservation2.customer_phone
+                                      }
+                                  ] }.to_json )
+
+
+    end
+  end
+
 end
