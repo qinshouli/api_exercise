@@ -53,4 +53,46 @@ RSpec.describe "API_V1::Reservations", :type => :request do
     expect( @reservation.customer_phone ).to eq("987654321")
   end
 
+  describe "POST /api/v1/reservations" do
+      example "success without auth_token" do
+        post "/api/v1/reservations", :params => { :train_number => @train1.number, :seat_number => "1B",
+                                                  :customer_name => "zoo", :customer_phone => "55555555"}
+
+        expect(response).to have_http_status(200)
+
+        created_reservation = Reservation.last
+
+        expect(response.body).to eq( { :booking_code => created_reservation.booking_code,
+                                       :reservation_url => api_v1_reservation_url(+created_reservation.booking_code) }.to_json )
+
+        expect(created_reservation.customer_name).to eq("zoo")
+        expect(created_reservation.customer_phone).to eq("55555555")
+        expect(created_reservation.user_id).to eq(nil)
+      end
+
+      example "success with auth_token" do
+        post "/api/v1/reservations", :params => { :auth_token => @user.authentication_token,
+                                                  :train_number => @train1.number, :seat_number => "1B",
+                                                  :customer_name => "zoo", :customer_phone => "55555555"}
+
+        expect(response).to have_http_status(200)
+
+        created_reservation = Reservation.last
+
+        expect(response.body).to eq( { :booking_code => created_reservation.booking_code,
+                                       :reservation_url => api_v1_reservation_url(+created_reservation.booking_code) }.to_json )
+
+        expect(created_reservation.customer_name).to eq("zoo")
+        expect(created_reservation.customer_phone).to eq("55555555")
+        expect(created_reservation.user_id).to eq(@user.id)
+      end
+
+     example "failed" do
+        post "/api/v1/reservations", :params => { :train_number => @train1.number, :seat_number => "1A", +:customer_name => "zoo", :customer_phone => "55555555"}
+
+        expect(response).to have_http_status(400)
+
+        expect(response.body).to eq( { :message => "订票失败", :errors => { :seat_number => ["has already been +taken"] } }.to_json )
+      end
+  end
 end
